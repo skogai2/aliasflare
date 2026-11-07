@@ -6,7 +6,9 @@
   "private": true,
   "license": "MIT",
   "main": "src/index.js",
-  "bin": { "aliasflare-mcp": "bin/aliasflare-mcp.js" },
+  "bin": {
+    "aliasflare-mcp": "bin/aliasflare-mcp.js"
+  },
   "scripts": {
     "test": "node --test test/*.test.js",
     "dev": "wrangler dev",
@@ -22,7 +24,16 @@
   "engines": {
     "node": ">=22"
   },
-  "keywords": ["email-alias", "cloudflare-workers", "email-routing", "simplelogin", "addy", "privacy", "mcp", "self-hosted"],
+  "keywords": [
+    "email-alias",
+    "cloudflare-workers",
+    "email-routing",
+    "simplelogin",
+    "addy",
+    "privacy",
+    "mcp",
+    "self-hosted"
+  ],
   "cloudflare": {
     "bindings": {
       "DOMAIN": {
@@ -38,5 +49,9 @@
         "description": "Optional, for replying/sending from aliases on the free plan. Get a free key at [resend.com](https://resend.com) (3,000 emails/month). Enter `none` to skip."
       }
     }
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261023.1": true
   }
 }
