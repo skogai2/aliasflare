@@ -18,6 +18,17 @@ test("extractCode: subject fallback and no false positives", () => {
   assert.equal(extractCode("Newsletter", "© 2026 Shop Inc. All rights reserved."), null);
 });
 
+test("extractCode: code at the end of a sentence", () => {
+  assert.equal(extractCode("Your verification code", "Your verification code is 628413. It expires in 10 minutes."), "628413");
+  assert.equal(extractCode("Sign in", "Code is 628413.\nThanks"), "628413");
+  assert.equal(extractCode("628413.", ""), "628413");
+});
+
+test("extractCode: decimals and dotted numbers are not codes", () => {
+  assert.equal(extractCode("Receipt", "Your code: 12345.67 total"), null);
+  assert.equal(extractCode("v1.234567.8 released", ""), null);
+});
+
 test("stripTrackers removes 1x1 and known trackers only", () => {
   const html = `<p>hi</p><img src="https://x.com/logo.png" width="120"><img src="https://t.co/a.gif" width="1" height="1"><img src="https://abc.list-manage.com/track/open.php?u=1"><img style="display:none" src="https://y/p.gif">`;
   const r = stripTrackers(html);
