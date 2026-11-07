@@ -213,3 +213,46 @@ I found why the Worker never received mail and switched to skogsund.se as you as
 - Bash: `CF=$(grep -m1 '^oauth_token' ~/.config/.wrangler/config/default.toml | cut -d'"' -f2); for Z in f904f07b3ea330186fb0fc22…`
 - Bash: `npx wrangler email routing rules get skogsund.se catch-all 2>&1 | rtk grep -A5 'Catch-all'`
 
+## 2026-11-07 21:52 · turn eea22124
+
+**User**
+
+> we now have a RESEND_API_KEY set
+
+**Assistant**
+
+aliasflare now works end to end on skogsund.se, and the MCP tools work too.
+
+**Tested and working:**
+- **Receiving:** I sent a mail from `github.ej85@skogai.se` to `mcptest.pctb@skogsund.se` through Resend. The Worker received it, rewrote it and forwarded it to Gmail, and it shows up as an incoming message in the log. I haven't opened your Gmail to look at the rewritten copy, because the mail connector's daily limit is used up.
+- **Sending:** sending from an alias works and now goes through Resend (`/api/config` reports `outbound: resend`).
+- **MCP:** I used `create_alias`, `list_aliases`, `recent_messages` and `send_from_alias` through the `/mcp` endpoint, and they all worked. The REST endpoint `/api/code` returns the code from the second test mail.
+- **New aliases go to skogsund.se by default.** I reordered `DOMAIN` to `skogsund.se,skogai.se`.
+
+**Bug fixed and deployed:** a verification code at the end of a sentence ("Your code is 591736.") was never detected, because the pattern rejected any code followed by a period. Now a period only rules a match out when another character follows it, so decimals and version numbers are still ignored. I added two tests and all 27 pass. The fix is deployed, and the second test mail's code was detected. It's committed on branch `fix/code-before-period` as `251bc13`, which I haven't pushed; say if you want a PR.
+
+**Still open:**
+1. **skogai.se has no MX records**, so its 4 existing aliases, plus `claude@` and `goose@`, can't receive mail. Fix it in the dashboard: skogai.se → Email → Email Routing → Settings → add the records.
+2. **Undo the test aliases if you like:** `mcptest.pctb@skogsund.se`, `shoptest.85j9@skogai.se`, `github.ej85@skogai.se` and the others were created while testing. Say if you want any of them disabled or deleted.
+3. **`.dev.vars.example` is still deleted** in your working tree. The command to restore it was blocked earlier as destructive, so run `! git checkout .dev.vars.example` yourself.
+4. **Rotate the admin token** once you're done testing, since it appeared in this chat.
+
+**Actions**
+
+- mcp__aliasflare__create_alias: mcptest
+- ToolSearch: select:mcp__aliasflare__send_from_alias
+- Bash: `T=$(grep ^ADMIN_TOKEN .dev.vars | cut -d= -f2); curl -s -H "Authorization: Bearer $T" https://aliasflare.skogai.workers.…`
+- mcp__aliasflare__send_from_alias: github.ej85@skogai.se
+- Bash: `T=$(grep ^ADMIN_TOKEN .dev.vars | cut -d= -f2); for i in $(seq 1 9); do r=$(curl -s -H "Authorization: Bearer $T" "https…`
+- Bash: `rtk grep -n "extractCode" -A40 src/util.js | head -70; rtk grep -n "extractCode" -B2 -A12 test/util.test.js | head -40`
+- Bash: `node -e 'import("./src/util.js").then(({extractCode:e})=>{for (const t of ["Your verification code is 628413. It expires…`
+- Edit `test/util.test.js`
+- Bash: `node --test test/util.test.js 2>&1 | rtk grep -E '^(✔|✖)|ℹ (pass|fail)'`
+- Edit `src/util.js`
+- Edit `src/util.js`
+- Bash: `npm test 2>&1 | rtk grep -E '^✖|ℹ (tests|pass|fail)'`
+- Bash: `npx wrangler deploy 2>&1 | rtk grep -E 'Uploaded|Deployed|Version ID|ERROR|✘'`
+- mcp__aliasflare__send_from_alias: github.ej85@skogai.se
+- Bash: `sleep 15; T=$(grep ^ADMIN_TOKEN .dev.vars | cut -d= -f2); curl -s -H "Authorization: Bearer $T" "https://aliasflare.skog…`
+- Bash: `git switch -c fix/code-before-period && rtk git add src/util.js test/util.test.js && rtk git commit -q -m "fix: detect v…`
+
