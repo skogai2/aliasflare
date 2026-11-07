@@ -172,3 +172,44 @@ I sent a second test to a brand-new address, `shoptest@skogai.se`, while the liv
 - Bash: `timeout 120 npx wrangler tail aliasflare --format pretty > /tmp/claude-1000/-home-skogix--local-src-aliasflare/3493cf90-…`
 - mcp__emil-skogsund-gmail-com__send_email: aliasflare inbound test 2
 
+## 2026-11-07 21:46 · turn 9f2c2b26
+
+**User**
+
+> try skogsund.se
+
+**Assistant**
+
+I found why the Worker never received mail and switched to skogsund.se as you asked. A new test still needs to go out from your side.
+
+**Why nothing reached the Worker:** skogai.se has **no MX records**, so Cloudflare marks its Email Routing as `misconfigured` and mail for it goes nowhere. My first two test mails to skogai.se don't even appear in Cloudflare's delivery records. This also means `claude@skogai.se` and `goose@skogai.se` currently can't receive mail. I tried to have the API add the records and it refused (`must be a subdomains of skogai.se`). The dashboard fixes it: skogai.se → Email → Email Routing → **Settings** → "Enable"/"Add records".
+
+**skogsund.se is set up:**
+- The Worker's `DOMAIN` secret is now `skogai.se,skogsund.se`, and `/api/config` lists both.
+- The skogsund.se catch-all now goes to `worker: aliasflare`. `emil@`, `linus@` and `annelie@` still go to their own inboxes.
+- skogsund.se's MX records are live and its routing status is `ready`.
+- My test mail to `shoptest@skogsund.se` arrived at 20:44:39, while the new rule was still taking effect. Cloudflare delivered it to Gmail through the old forward rule, so it never passed through the Worker.
+
+**One more test needed, from you:** send any mail, ideally from an account other than emil.skogsund@gmail.com, to something like `test123@skogsund.se`. It should create the alias automatically, show up in the dashboard's message log, and arrive in Gmail with the sender rewritten. If the body contains a code, it gets put in the subject. Tell me when it's sent and I'll check the logs and Cloudflare's delivery records.
+
+**Sent mail lands in spam:** your earlier "test" from `github.ej85@skogai.se` went to Gmail's Spam folder. Cloudflare reports that send with no SPF, DKIM or DMARC result, which fits skogai.se's routing being misconfigured. Sending from skogsund.se should do better.
+
+**Other things:**
+- **Mail connector limit:** that test send used the last of the Gmail connector's 5 free calls per 24 hours, so I can't send or search mail through it until about 21:38 tomorrow, Swedish time. [Pro](https://app.mailbox-mcp.com/mailboxes/37f12b10-a984-41f1-ac0d-85d037d85a54/plan/?upgrade=1) raises that to 1,000 calls for £34.99 + VAT a year.
+- **MCP endpoint:** to use it from Claude Code, run this (it stores the token in your local `~/.claude.json` only):
+  ```
+  ! claude mcp add --transport http aliasflare https://aliasflare.skogai.workers.dev/mcp --header "Authorization: Bearer $(grep ^ADMIN_TOKEN .dev.vars | cut -d= -f2)"
+  ```
+- **Admin token exposed:** it is the same token in `.dev.vars` and on the live Worker, and it is now in this chat transcript. Rotate it once things work: `openssl rand -hex 24`, then `wrangler secret put ADMIN_TOKEN`.
+- **To undo the routing changes:** point each catch-all back to `forward` → emil.skogsund@gmail.com in the dashboard.
+
+**Actions**
+
+- Bash: `CF=$(grep -m1 '^oauth_token' ~/.config/.wrangler/config/default.toml | cut -d'"' -f2); curl -s -X POST "https://api.clou…`
+- Bash: `curl -s -H 'accept: application/dns-json' "https://cloudflare-dns.com/dns-query?name=skogsund.se&type=MX" | jq -r '.Answ…`
+- Bash: `printf 'skogai.se,skogsund.se' | npx wrangler secret put DOMAIN 2>&1 | grep -v -e WARNING -e '^$' | tail -2; CF=$(grep -…`
+- mcp__emil-skogsund-gmail-com__send_email: aliasflare inbound test 3
+- Bash: `T=$(grep ^ADMIN_TOKEN .dev.vars | cut -d= -f2); for i in $(seq 1 9); do r=$(curl -s -H "Authorization: Bearer $T" "https…`
+- Bash: `CF=$(grep -m1 '^oauth_token' ~/.config/.wrangler/config/default.toml | cut -d'"' -f2); for Z in f904f07b3ea330186fb0fc22…`
+- Bash: `npx wrangler email routing rules get skogsund.se catch-all 2>&1 | rtk grep -A5 'Catch-all'`
+
