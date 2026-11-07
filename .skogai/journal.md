@@ -55,3 +55,43 @@ Deploying puts something live on your account, so I'll wait for your go-ahead be
 - Bash: `rtk curl -s localhost:3001/api/config; echo; rtk curl -s localhost:3001/cdn-cgi/local/explorer/api/d1/database 2>&1 | he…`
 - Bash: `npx wrangler d1 migrations apply DB --local 2>&1 | tail -8`
 
+## 2026-11-07 21:29 · turn 5945d0f2
+
+**User**
+
+> mostly done please check.  https://aliasflare.skogai.workers.dev
+
+**Assistant**
+
+The Worker is live but not usable yet, and no mail reaches it.
+
+**Working:**
+- `https://aliasflare.skogai.workers.dev/health` returns ok and the dashboard loads (HTTP 200).
+- The remote database exists with the migration applied.
+- Wrangler is logged in with Email Routing permissions.
+- Email Routing is enabled on `skogsund.se`, `skogai.se` and `tjackgpt.win`.
+
+**Not done yet:**
+1. **No secrets are set on the Worker.** `wrangler secret list` returns `[]`, so `/api/config` answers `ADMIN_TOKEN is not set` and you can't log in. Run these yourself so the values stay out of this chat:
+   ```
+   ! for s in DOMAIN DESTINATION ADMIN_TOKEN RESEND_API_KEY; do npx wrangler secret put $s; done
+   ```
+   `RESEND_API_KEY` can be `none`. `DESTINATION` has to be a verified address. `emil@skogsund.se` is verified; `linus@skogsund.se` is still pending.
+2. **No catch-all rule points at the Worker.** All three domains forward their catch-all straight to Gmail:
+   - `skogsund.se` → emil.skogsund@gmail.com
+   - `skogai.se` → emil.skogsund@gmail.com
+   - `tjackgpt.win` → l.skogsund@gmail.com
+3. **`.dev.vars.example` is deleted** in your working tree. It looks like it was moved instead of copied. Restore it with `! git checkout .dev.vars.example`; your `.dev.vars` stays as it is.
+
+**Which domain gets the aliases?** Switching a catch-all to the Worker changes how that domain's mail is handled. Named routing rules still win, so explicit addresses keep working. Every other address would be rewritten by aliasflare and forwarded to your `DESTINATION`. Since `AUTO_CREATE` is on, an alias is also created on first mail. I'd start with `skogai.se` rather than `skogsund.se`, which is your personal domain.
+
+Once the secrets are in, tell me which domain and I'll switch its catch-all to the Worker and test end to end. I'll create an alias over the API, then send a test mail to it from your Gmail connector so you can confirm it arrives rewritten.
+
+**Actions**
+
+- Bash: `rtk curl -s https://aliasflare.skogai.workers.dev/health; echo; rtk curl -s -o /dev/null -w '%{http_code}\n' https://ali…`
+- Bash: `rtk git diff --stat; rtk git diff wrangler.toml; npx wrangler email routing --help 2>&1 | head -30`
+- Bash: `npx wrangler email routing list 2>&1 | tail -12; npx wrangler email routing addresses list 2>&1 | tail -12`
+- Bash: `npx wrangler email routing rules --help 2>&1 | rtk grep -A8 COMMANDS; for z in skogsund.se skogai.se tjackgpt.win; do ec…`
+- Bash: `for z in skogsund.se skogai.se tjackgpt.win; do echo "== $z"; npx wrangler email routing rules get $z catch-all 2>&1 | g…`
+
