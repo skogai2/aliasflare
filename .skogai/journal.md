@@ -121,3 +121,29 @@ That `{"error":"unauthorized"}` is the right answer. Before the secrets were set
 - Bash: `rtk curl -s https://aliasflare.skogai.workers.dev/api/config; echo; npx wrangler secret list 2>&1 | rtk grep -o '"name":…`
 - Bash: `rtk grep -n "RESEND_API_KEY\|BREVO_API_KEY" src/*.js | head`
 
+## 2026-11-07 21:37 · turn 8f341210
+
+**User**
+
+> it is set now. however still not really acting as expected
+
+**Assistant**
+
+I couldn't switch it. Wrangler refuses with `Catch-all rule only supports 'forward' or 'drop' action types`. Nothing changed: the `skogai.se` catch-all still forwards to emil.skogsund@gmail.com.
+
+Cloudflare itself does allow a catch-all to send to a Worker, which is what the README's step 3 uses. It's this version of the wrangler command (4.156.0, an open beta) that doesn't support it.
+
+**Your options:**
+1. **Dashboard (recommended, about 30 seconds):** Cloudflare Dashboard → `skogai.se` → Email → Email Routing → Routing rules → Catch-all address → Edit → action **Send to a Worker** → `aliasflare` → Save. Tell me when it's done and I'll verify it.
+2. **Cloudflare API directly:** a PUT to `/zones/1a6c4cd46ba389f144641d8931c275d2/email/routing/rules/catch_all` with a worker action. I'd need an API token with Email Routing edit rights. I won't pull wrangler's OAuth token out of its config without you saying so, because that means handling a credential.
+
+**After that, to test end to end** I'll need the admin token in a file, for example `~/.config/aliasflare/token`. Then I'll create an alias over the API, send it a test mail from your Gmail connector, and check that it arrives rewritten and shows up in `/api/messages`.
+
+**Actions**
+
+- Bash: `for z in skogsund.se skogai.se tjackgpt.win; do echo "== $z"; npx wrangler email routing rules get $z catch-all 2>&1 | r…` (failed)
+- Bash: `npx wrangler secret list 2>&1 | rtk grep -o '"name": *"[A-Z_]*"'; for z in skogai.se skogsund.se tjackgpt.win; do echo "…`
+- AskUserQuestion
+- Bash: `npx wrangler email routing rules update --help 2>&1 | sed -n '/OPTIONS/,$p' | head -30`
+- Bash: `npx wrangler email routing rules update skogai.se catch-all --action-type worker --action-value aliasflare --enabled tru…`
+
